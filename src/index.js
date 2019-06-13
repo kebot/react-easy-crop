@@ -305,6 +305,7 @@ class Cropper extends React.Component {
         {this.state.cropSize && (
           <CropArea
             cropShape={cropShape}
+            onCropSizeChange={null}
             showGrid={showGrid}
             style={{
               width: this.state.cropSize.width,

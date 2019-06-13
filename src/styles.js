@@ -1,4 +1,5 @@
 import styled from '@emotion/styled'
+import * as React from 'react'
 
 export const Container = styled('div')(
   {
@@ -72,7 +73,7 @@ const roundShape = {
   borderRadius: '50%',
 }
 
-export const CropArea = styled('div')({}, ({ cropShape, showGrid, cropAreaStyle }) => ({
+const CropAreaDiv = styled('div')({}, ({ cropShape, showGrid, cropAreaStyle }) => ({
   ...(() => {
     switch (cropShape) {
       case 'round':
@@ -85,3 +86,129 @@ export const CropArea = styled('div')({}, ({ cropShape, showGrid, cropAreaStyle 
   ...(showGrid ? gridLines : {}),
   ...cropAreaStyle,
 }))
+
+const DragArea = styled('div')(
+  {
+    position: 'absolute',
+    zIndex: 100,
+    backgroundColor: 'rgba(0, 0, 0, .3)',
+  },
+  ({ direction }) => {
+    const barThickness = 10
+    if (direction === 'top') {
+      return {
+        top: -barThickness / 2,
+        left: 0,
+        right: 0,
+        height: barThickness,
+        cursor: 'ns-resize',
+      }
+    } else if (direction === 'left') {
+      return {
+        top: 0,
+        bottom: 0,
+        left: -barThickness / 2,
+        width: barThickness,
+        cursor: 'ew-resize',
+      }
+    } else if (direction === 'right') {
+      return {
+        top: 0,
+        bottom: 0,
+        right: -barThickness / 2,
+        width: barThickness,
+        cursor: 'ew-resize',
+      }
+    } else if (direction === 'bottom') {
+      return {
+        bottom: -barThickness / 2,
+        left: 0,
+        right: 0,
+        height: barThickness,
+        cursor: 'ns-resize',
+      }
+    }
+  }
+)
+
+export const CropArea = ({ style, ...props }) => {
+  const [startPosition, setStartPosition] = React.useState(null)
+  const [currentPosition, setCurrentPosition] = React.useState(null)
+
+  const onMouseDown = React.useCallback(
+    (direction, e) => {
+      e.stopPropagation()
+      setStartPosition({ direction: direction, x: e.clientX, y: e.clientY })
+    },
+    [startPosition]
+  )
+
+  React.useEffect(() => {
+    const onMouseUp = e => {
+      setStartPosition(null)
+      setCurrentPosition(null)
+    }
+    document.addEventListener('mouseup', onMouseUp)
+
+    return () => {
+      document.removeEventListener('mouseup', onMouseUp)
+    }
+  }, [startPosition])
+
+  React.useEffect(() => {
+    if (!startPosition) {
+      return
+    }
+    const onMouseMove = e => {
+      setCurrentPosition({
+        x: e.clientX,
+        y: e.clientY,
+      })
+    }
+    document.addEventListener('mousemove', onMouseMove)
+
+    return () => {
+      document.removeEventListener('mousemove', onMouseMove)
+    }
+  }, [startPosition])
+
+  let newStyle = style
+  if (startPosition && currentPosition) {
+    const { direction } = startPosition
+    if (direction === 'left') {
+      newStyle = {
+        width: style.width - (currentPosition.x - startPosition.x) * 2,
+        height: style.height,
+      }
+    } else if (direction === 'right') {
+      newStyle = {
+        width: style.width + (currentPosition.x - startPosition.x) * 2,
+        height: style.height,
+      }
+    } else if (direction === 'top') {
+      newStyle = {
+        width: style.width,
+        height: style.height - (currentPosition.y - startPosition.y) * 2,
+      }
+    } else if (direction === 'bottom') {
+      newStyle = {
+        width: style.width,
+        height: style.height + (currentPosition.y - startPosition.y) * 2,
+      }
+    }
+  }
+
+  return (
+    <CropAreaDiv style={newStyle} {...props}>
+      {['top', 'bottom', 'left', 'right'].map(direction => {
+        return (
+          <DragArea
+            key={direction}
+            direction={direction}
+            onMouseDown={onMouseDown.bind(null, direction)}
+          />
+        )
+      })}
+    </CropAreaDiv>
+  )
+}
